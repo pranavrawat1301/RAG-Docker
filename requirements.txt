@@ -1,0 +1,16 @@
+fastapi==0.68.1
+uvicorn==0.15.0
+python-multipart
+pymongo==4.3.3
+pydantic==1.10.12
+google-generativeai
+langchain-google-genai
+sentence-transformers
+pinecone-client
+transformers
+torch
+langchain
+google-cloud-aiplatform
+mupdf
+python-jose[cryptography]
+passlib[bcrypt]
