@@ -42,7 +42,6 @@ async def upload_document(file: UploadFile = File(...)):
         }
         db.documents.insert_one(metadata)
         
-        # Process and upsert to Pinecone (using your existing code)
         non_empty_documents = [doc for doc in documents if doc.page_content.strip()]
         full_text = " ".join([doc.page_content for doc in non_empty_documents])
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
