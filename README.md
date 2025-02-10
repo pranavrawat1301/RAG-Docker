@@ -23,8 +23,8 @@ A Retrieval-Augmented Generation (RAG) pipeline that enables document upload, ve
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/rag-pipeline.git
-cd rag-pipeline
+git clone 
+cd 
 ```
 
 2. Build and run with Docker Compose:
