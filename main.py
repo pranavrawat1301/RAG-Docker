@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pymongo import MongoClient
 from pydantic import BaseModel
@@ -8,39 +7,54 @@ from datetime import datetime
 from query import user_input, response_generator
 from save import PyMuPDFLoader, RecursiveCharacterTextSplitter
 from upsert import process_batch
+import ssl
 
 app = FastAPI()
 
-# MongoDB connection (using MongoDB Atlas free tier)
-MONGODB_URI = Your_API_string
-client = MongoClient(MONGODB_URI)
-db = client.ragdb
+MONGODB_URI = "mongodb_uri"
+try:
+    client = MongoClient(MONGODB_URI,
+        ssl=True,
+        ssl_cert_reqs=ssl.CERT_NONE
+    )
+    # Test the connection
+    client.admin.command('ping')
+    db = client.ragdb
+except Exception as e:
+    print(f"Failed to connect to MongoDB: {e}")
+    raise
 
 class Query(BaseModel):
     text: str
     generate_summary: bool = False
 
+def serialize_document(doc):
+    """Convert MongoDB document to JSON-serializable format"""
+    if '_id' in doc:
+        doc['_id'] = str(doc['_id'])  # Convert ObjectId to string
+    return doc
+
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
     try:
-        # Save uploaded file temporarily
         temp_path = f"temp_{file.filename}"
         with open(temp_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
         
-        # Process document
         loader = PyMuPDFLoader(temp_path)
         documents = loader.load()
         
-        # Store metadata in MongoDB
         metadata = {
             "filename": file.filename,
             "upload_time": datetime.utcnow(),
             "page_count": len(documents),
             "status": "processed"
         }
-        db.documents.insert_one(metadata)
+        result = db.documents.insert_one(metadata)
+        
+        # Convert the inserted document to a serializable format
+        metadata['_id'] = str(result.inserted_id)
         
         non_empty_documents = [doc for doc in documents if doc.page_content.strip()]
         full_text = " ".join([doc.page_content for doc in non_empty_documents])
@@ -48,7 +62,6 @@ async def upload_document(file: UploadFile = File(...)):
         chunks = text_splitter.split_text(full_text)
         process_batch(chunks)
         
-        # Clean up temp file
         os.remove(temp_path)
         
         return {"message": "Document processed successfully", "metadata": metadata}
@@ -59,22 +72,28 @@ async def upload_document(file: UploadFile = File(...)):
 @app.post("/query")
 async def query_documents(query: Query):
     try:
-        # Get response using existing functions
         if query.generate_summary:
             response = response_generator(query.text)
         else:
             response = user_input(query.text)
         
-        # Store query metadata
         query_metadata = {
             "query_text": query.text,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.utcnow().isoformat(), 
             "generated_summary": query.generate_summary
         }
-        db.queries.insert_one(query_metadata)
+        
+        result = db.queries.insert_one(query_metadata)
+        query_metadata['_id'] = str(result.inserted_id)  
+        
+        # Making response JSON serializable
+        if isinstance(response, dict) and 'output_text' in response:
+            response_text = response['output_text']
+        else:
+            response_text = str(response)
         
         return {
-            "response": response,
+            "response": response_text,
             "metadata": query_metadata
         }
     
@@ -84,7 +103,8 @@ async def query_documents(query: Query):
 @app.get("/documents")
 async def list_documents():
     try:
-        documents = list(db.documents.find({}, {"_id": 0}))
-        return documents
+        documents = list(db.documents.find({}))
+        serialized_documents = [serialize_document(doc) for doc in documents]
+        return serialized_documents
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
