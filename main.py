@@ -12,7 +12,7 @@ from upsert import process_batch
 app = FastAPI()
 
 # MongoDB connection (using MongoDB Atlas free tier)
-MONGODB_URI = "mongodb+srv://rag:<db_password>@cluster0.4pkqz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGODB_URI = Your_API_string
 client = MongoClient(MONGODB_URI)
 db = client.ragdb
 
