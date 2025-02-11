@@ -10,11 +10,11 @@ from transformers import pipeline
 
 
 
-pc = Pinecone(api_key="your_api_key" , pool_threads=50)
+pc = Pinecone(api_key="pinecone_api_key" , pool_threads=50)
 index = pc.Index("fast-rag2")
 
 
-GOOGLE_API_KEY = "AIzaSyClyBfKzV9Pi_RoxwpUBhDjqx9GeESKm18"
+GOOGLE_API_KEY = "gemini_api_key"
 genai.configure(api_key=GOOGLE_API_KEY)
 model = SentenceTransformer('all-MiniLM-L6-v2')  
 
@@ -47,20 +47,19 @@ def get_conversational_chain():
 
 def user_input(query):
     query_embedding = model.encode(query).tolist()
-        
+    
     results = index.query(
         vector=query_embedding,
-        top_k=1,  
+        top_k=1,
         include_metadata=True
     )
 
-    text_results = []  
-    metadata_results = []  
+    text_results = []
+    metadata_results = []
 
     for match in results['matches']:
-        text = match['metadata'].get('text', 'No text available')  # Get chunk text
-        file_name = match['metadata'].get('file', 'Unknown file')  # Get metadata
-
+        text = match['metadata'].get('text', 'No text available')
+        file_name = match['metadata'].get('file', 'Unknown file')
         text_results.append(text)
         metadata_results.append(file_name)
 
@@ -70,24 +69,20 @@ def user_input(query):
     chain = get_conversational_chain()
 
     response = chain(
-        {"input_documents": docs, "question": query},  
+        {"input_documents": docs, "question": query},
         return_only_outputs=True
     )
 
-    print("Metadata:")
-    for i, file in enumerate(metadata_results):
-        print(f"File Name: {file}")
-
-    print("Response:")
-    print(response)
-    return response['output_text']
+    if isinstance(response, dict) and 'output_text' in response:
+        return response['output_text']
+    return str(response)
 
 
 summarizer = pipeline("summarization")
 
 def response_generator(query):
     answer_pipe = user_input(query)
-    summary = summarizer(query+answer_pipe, max_length=150, min_length=50, do_sample=False)
+    summary = summarizer(query + answer_pipe, max_length=150, min_length=50, do_sample=False)
     return summary[0]['summary_text']
 
 
