@@ -10,7 +10,7 @@ from transformers import pipeline
 
 
 
-pc = Pinecone(api_key="pcsk_48jq17_8zsXqWFqrSZVSi9fFqMnxjsa8L3iP1CPDCZ88z7j1eq5y8MZvEjwrj7yd9T5ERH" , pool_threads=50)
+pc = Pinecone(api_key="your_api_key" , pool_threads=50)
 index = pc.Index("fast-rag2")
 
 
