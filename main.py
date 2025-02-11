@@ -6,12 +6,12 @@ import os
 from datetime import datetime
 from query import user_input, response_generator
 from save import PyMuPDFLoader, RecursiveCharacterTextSplitter
-from upsert import process_batch
 import ssl
+from upsert import upsertion
 
 app = FastAPI()
 
-MONGODB_URI = "mongodb_uri"
+MONGODB_URI = "mongodb+srv://rag:Pranav04@cluster0.4pkqz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 try:
     client = MongoClient(MONGODB_URI,
         ssl=True,
@@ -31,7 +31,7 @@ class Query(BaseModel):
 def serialize_document(doc):
     """Convert MongoDB document to JSON-serializable format"""
     if '_id' in doc:
-        doc['_id'] = str(doc['_id'])  # Convert ObjectId to string
+        doc['_id'] = str(doc['_id'])  
     return doc
 
 @app.post("/upload")
@@ -53,14 +53,13 @@ async def upload_document(file: UploadFile = File(...)):
         }
         result = db.documents.insert_one(metadata)
         
-        # Convert the inserted document to a serializable format
         metadata['_id'] = str(result.inserted_id)
         
         non_empty_documents = [doc for doc in documents if doc.page_content.strip()]
         full_text = " ".join([doc.page_content for doc in non_empty_documents])
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
         chunks = text_splitter.split_text(full_text)
-        process_batch(chunks)
+        upsertion(chunks)
         
         os.remove(temp_path)
         
@@ -79,14 +78,13 @@ async def query_documents(query: Query):
         
         query_metadata = {
             "query_text": query.text,
-            "timestamp": datetime.utcnow().isoformat(), 
+            "timestamp": datetime.utcnow().isoformat(),  
             "generated_summary": query.generate_summary
         }
         
         result = db.queries.insert_one(query_metadata)
-        query_metadata['_id'] = str(result.inserted_id)  
+        query_metadata['_id'] = str(result.inserted_id) 
         
-        # Making response JSON serializable
         if isinstance(response, dict) and 'output_text' in response:
             response_text = response['output_text']
         else:
