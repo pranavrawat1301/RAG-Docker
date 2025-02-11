@@ -7,7 +7,7 @@ from save import file_name
 
 
 model = SentenceTransformer('all-MiniLM-L6-v2')  
-pc = Pinecone(api_key="pcsk_48jq17_8zsXqWFqrSZVSi9fFqMnxjsa8L3iP1CPDCZ88z7j1eq5y8MZvEjwrj7yd9T5ERH", pool_threads=50)
+pc = Pinecone(api_key="Your_api_key", pool_threads=50)
 index_name = "fast-rag2"
 
 if index_name not in pc.list_indexes().names():
